@@ -146,7 +146,7 @@ def generate_payload(supplied_cmd:str = None) -> list[str]: # todo: nadodati na 
     cmd = None
 
     # if the function is called without command provided as function arg
-    # read the command from script arguments or get user input 
+    # read the command from script arguments or get user input
     if supplied_cmd is None:
         if g_args.cmd:
             cmd = g_args.cmd
