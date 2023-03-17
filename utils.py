@@ -28,16 +28,51 @@ reverse_shells = [
 ]
 
 
+#TODO: sve picklati sa razlicitim verzijama pickle protokola
+
+
+"""
+SA SUBRPOCESS NIJE TAKO!!!!!!!!!!!!, koristiti subprocess umjesto os.sysyem?
+"""
+
+""" 
+previously constructed payloads calling sleep [3,4,5,6] seconds
+each payload is pickled with all 6 pickle protocols and base64 encoded
+
+these are not generated on the fly for two reasons:
+    1) efficiency
+    2) considering that executing command relies on importing os module
+       paylods differ on different operating systems
+         - pickle payloads generated on linux will execute only if unpickling on linux aswell
+         - the same goes for windows
+
+
+"""
+
+
+win_sleep_prepickled = [
+    # sleep 3
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    
+
+]
+
+
 sleep_nix = [
-    "sleep 2",
     "sleep 3",
     "sleep 4",
     "sleep 5",
+    "sleep 6"
 ]
 
 sleep_win = [
-    "timeout 2",
     "timeout 3",
     "timeout 4",
     "timeout 5",
+    "timeout 6"
 ]
