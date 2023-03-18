@@ -199,7 +199,7 @@ def parse_request_and_insert_payload(req_lines, payload=None, custom_marker=None
     host = None
     headers = dict()
     data = None
-    lines = req_lines
+    lines = req_lines[:]
 
     if payload is not None:
         if custom_marker is None:
@@ -223,11 +223,6 @@ def parse_request_and_insert_payload(req_lines, payload=None, custom_marker=None
                 #TODO: split by firrst occurance only to save the port num
                 host = line.split(':')[1].strip()
 
-
-    print(host, uri,"------------------------------")
-    print(host, type(host))
-    print(uri, type(uri))
-    print(host, uri,"------------------------------")
     
     # assumes https by default
     if http:
