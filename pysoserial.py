@@ -7,7 +7,7 @@ import pickle
 import pickletools
 import time
 import sys
-
+import math
 
 import requests
 from requests import Request
@@ -277,8 +277,15 @@ def confirm_vuln():
 
 
     avg_rtt = measure_avg_rtt(req_lines=request, http=g_args.http)
-    # time.sleep(123)
-    #TODO: isprobati vec serijalizirane objekte
+
+
+    if avg_rtt > 5:
+        sleep_time = int(math.ceil(2*avg_rtt))
+    else:
+        sleep_time = 5
+
+    print(sleep_time)
+    time.sleep(10)
 
 
     for nix_payload in utils.sleep_nix:
