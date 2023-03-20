@@ -50,51 +50,13 @@ these are not generated on the fly for two reasons:
 """
 
 
+prepickled = []
+
 win_sleep_prepickled = [
-    # timeout 3
-    "Y250CnN5c3RlbQpwMAooVnRpbWVvdXQgMwpwMQp0cDIKUnAzCi4=",
-    "Y250CnN5c3RlbQpxAChYCQAAAHRpbWVvdXQgM3EBdHECUnEDLg==",
-    "gAJjbnQKc3lzdGVtCnEAWAkAAAB0aW1lb3V0IDNxAYVxAlJxAy4=",
-    "gANjbnQKc3lzdGVtCnEAWAkAAAB0aW1lb3V0IDNxAYVxAlJxAy4=",
-    "gASVIQAAAAAAAACMAm50lIwGc3lzdGVtlJOUjAl0aW1lb3V0IDOUhZRSlC4=",
-    "gAWVIQAAAAAAAACMAm50lIwGc3lzdGVtlJOUjAl0aW1lb3V0IDOUhZRSlC4=",
-    #timeout 7 
-    "Y250CnN5c3RlbQpwMAooVnRpbWVvdXQgNwpwMQp0cDIKUnAzCi4=",
-    "Y250CnN5c3RlbQpxAChYCQAAAHRpbWVvdXQgN3EBdHECUnEDLg==",
-    "gAJjbnQKc3lzdGVtCnEAWAkAAAB0aW1lb3V0IDdxAYVxAlJxAy4=",
-    "gANjbnQKc3lzdGVtCnEAWAkAAAB0aW1lb3V0IDdxAYVxAlJxAy4=",
-    "gASVIQAAAAAAAACMAm50lIwGc3lzdGVtlJOUjAl0aW1lb3V0IDeUhZRSlC4=",
-    "gAWVIQAAAAAAAACMAm50lIwGc3lzdGVtlJOUjAl0aW1lb3V0IDeUhZRSlC4="
+    # sleep 5
 ]
 
 
 nix_sleep_prepickled = [
-    # sleep 3
-    "Y3Bvc2l4CnN5c3RlbQpwMAooVnNsZWVwIDMKcDEKdHAyClJwMwou",
-    "Y3Bvc2l4CnN5c3RlbQpxAChYBwAAAHNsZWVwIDNxAXRxAlJxAy4=",
-    "gAJjcG9zaXgKc3lzdGVtCnEAWAcAAABzbGVlcCAzcQGFcQJScQMu",
-    "gANjcG9zaXgKc3lzdGVtCnEAWAcAAABzbGVlcCAzcQGFcQJScQMu",
-    "gASVIgAAAAAAAACMBXBvc2l4lIwGc3lzdGVtlJOUjAdzbGVlcCAzlIWUUpQu",
-    "gAWVIgAAAAAAAACMBXBvc2l4lIwGc3lzdGVtlJOUjAdzbGVlcCAzlIWUUpQu",
-    #sleep 7 
-    "Y3Bvc2l4CnN5c3RlbQpwMAooVnNsZWVwIDcKcDEKdHAyClJwMwou",
-    "Y3Bvc2l4CnN5c3RlbQpxAChYBwAAAHNsZWVwIDdxAXRxAlJxAy4=",
-    "gAJjcG9zaXgKc3lzdGVtCnEAWAcAAABzbGVlcCA3cQGFcQJScQMu",
-    "gANjcG9zaXgKc3lzdGVtCnEAWAcAAABzbGVlcCA3cQGFcQJScQMu",
-    "gASVIgAAAAAAAACMBXBvc2l4lIwGc3lzdGVtlJOUjAdzbGVlcCA3lIWUUpQu",
-    "gAWVIgAAAAAAAACMBXBvc2l4lIwGc3lzdGVtlJOUjAdzbGVlcCA3lIWUUpQu"
-]
-
-sleep_nix = [
-    "sleep 3",
-    "sleep 4",
-    "sleep 5",
-    "sleep 6"
-]
-
-sleep_win = [
-    "timeout 3",
-    "timeout 4",
-    "timeout 5",
-    "timeout 6"
+    # sleep 5
 ]
