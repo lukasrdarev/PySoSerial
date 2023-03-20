@@ -8,6 +8,7 @@ import pickletools
 import time
 import sys
 
+
 import requests
 from requests import Request
 requests.packages.urllib3.disable_warnings()
@@ -74,6 +75,7 @@ def parse_args():
         exploit()
     else:
         parent_parser.print_usage()
+        print()
         exit(1)
 
 
@@ -216,13 +218,16 @@ def parse_request_and_insert_payload(req_lines, payload=None, custom_marker=None
             data = "".join(lines[idx + 1:])
             break
         else:
-            header_name = line.split(':')[0].strip()
-            header_value = line.split(':')[1].strip()
+            # split only by first occurance to save the port(e.g Host: 127.0.0.1:1337)
+            header_name = line.split(':', 1)[0].strip()
+            header_value = line.split(':', 1)[1].strip()
             headers.update({header_name: header_value})
             if line.startswith("Host:"):
-                #TODO: split by firrst occurance only to save the port num
-                host = line.split(':')[1].strip()
+                host = header_value
 
+    if host is None:
+        print("[+] No Host header detected in request")
+        exit(1)
     
     # assumes https by default
     if http:
