@@ -18,8 +18,6 @@
 
 ```
 
-### Screenshots
-
 
 ### Description
 
