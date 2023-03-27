@@ -91,6 +91,10 @@ usage: pysoserial.py [-h] {verify-pickle,generate-payload,confirm-vuln,exploit} 
 
 **Example**
 
+![Example usage](https://asciinema.org/a/570994)
+
+
+
 
 
 To get general help run:
@@ -103,6 +107,8 @@ To get info about specific module run:
 ### Instalation
 
 ```
-git clone ...
+git clone git@github.com:burw0r/PySoSerial.git
+cd PySoSerial
+pip install -r ./requirements.txt
 ```
 

