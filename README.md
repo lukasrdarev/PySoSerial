@@ -91,7 +91,7 @@ usage: pysoserial.py [-h] {verify-pickle,generate-payload,confirm-vuln,exploit} 
 
 **Example**
 
-![Example usage](https://asciinema.org/a/570994)
+[![demo](https://asciinema.org/a/570994.svg)]
 
 
 
