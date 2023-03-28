@@ -59,7 +59,7 @@ options:
   -r REQUEST, --request REQUEST     Path to a file containing HTTP request in format used in Burp
   -p PROXY, --proxy PROXY           Use HTTP/HTTPS proxy when issuing requests to confirm vulnerability
   -m MARKER, --marker MARKER        Custom marker for injection point in request file. By default the marker is 'inject_here'
-  --lib {pickle,pyyaml}             Use tool for specific serialization library: [picle, pyyaml, all]
+  --lib {pickle,pyyaml,all}             Use tool for specific serialization library: [picle, pyyaml, all]
   --http                            Send requests over http.
 ```
 <br/>
@@ -73,7 +73,7 @@ options:
   -r REQUEST, --request REQUEST     Path to a file containing HTTP request in format used in Burp
   -p PROXY, --proxy PROXY           Use HTTP/HTTPS proxy when issuing requests to exploit the vulnerability
   -m MARKER, --marker MARKER        Custom marker for injection point in request file. By default the marker is 'inject_here'
-  --lib {pickle,pyyaml}             Use tool for specific serialization library: [picle, pyyaml, all]
+  --lib {pickle,pyyaml,all}             Use tool for specific serialization library: [picle, pyyaml, all]
   --http                            Send requests over http.
 
 ```
@@ -101,7 +101,7 @@ To get info about specific module run:
 `./pysoserial module_name --help`
 
 
-### Instalation
+### Installation
 
 ```
 git clone git@github.com:burw0r/PySoSerial.git
