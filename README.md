@@ -42,7 +42,7 @@ options:
 <br/>
 
 
-`generate-payload` module is used to create payloads which execute provided command when unserializing with specified library.
+`generate-payload` module is used to create payloads which execute provided command upon deserialization with specified library.
 ```
 options:
   -h, --help                    show this help message and exit
@@ -52,7 +52,7 @@ options:
 ```
 <br/>
 
-`confirm-vuln`
+`confirm-vuln` module is designed to verify the presence of a vulnerability in the tested web application. It does so by sending requests that include a specific payload that executes sleep during deserialization, resulting in a delay in the application's response and thus confirming the existence of the vulnerability.
 ```
 options:
   -h, --help                        show this help message and exit
@@ -65,7 +65,7 @@ options:
 ```
 <br/>
 
-`exploit` module 
+`exploit` module attempts to take advantage of the vulnerability in the web application by sending requests that contain payloads capable of executing specified commands upon deserialization. Furthermore, the exploit module includes a feature called --revshell that automatically attempts to execute a reverse shell.
 ```
 options:
   -h, --help                        show this help message and exit
