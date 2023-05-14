@@ -587,7 +587,7 @@ def print_red(txt):
 
 if __name__ == '__main__':
 
-    # signal.signal(signal.SIGINT, sig_handler)
+    signal.signal(signal.SIGINT, sig_handler)
     print_banner()
     check_py_version()
     parse_args()
